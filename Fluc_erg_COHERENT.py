@@ -176,8 +176,10 @@ plt.legend()
 plt.title(f"g = {g}")
 plt.show()
 
+Eb_list = []
 erg_list = []
 var_list = []
+ratio_list = []
 
 for i, N in enumerate(N_arr):
 
@@ -198,25 +200,39 @@ for i, N in enumerate(N_arr):
     # Partial trace over cavity (subsystem 0)
     ρb = ρ_full.ptrace(1)
 
-    # Ergotropy via pnm matrix
+    Eb = qt.expect(HB, ρb)
+    
     pnm, r_val, e_val = pnm_matrix(ρb, HB)
 
+    # Ergotropy via pnm matrix
     erg = ergotropy_pnm(pnm, r_val, e_val)
-    
+
+    # Variance via pnm matrix
     var = variance_pnm(pnm, r_val, e_val)
 
-    print(f"N={N:2d}, τ={τ:.3f}, Ergotropy={erg:.6f}, Variance={var:.6e}")
+    ratio = erg/Eb
 
+    print(f"N={N:2d}, τ={τ:.3f}, Eb={Eb:.6f}, Ergotropy={erg:.6f}, erg/Eb={ratio:.12f} Variance={var:.10e}")
+
+    Eb_list.append(Eb)
     erg_list.append(erg)
     var_list.append(var)
+    ratio_list.append(ratio)
 
+Eb_arr = np.array(Eb_list)
+erg_arr = np.array(erg_list)
+var_arr = np.array(var_list)
+
+rel_fluct = np.sqrt(var_arr) / erg_arr
+
+rel_fluc = np.sqrt(var_arr) / Eb_arr
 
 ###############################################################
 # Plot of battery ergotropy at optimal charging for different N 
 ###############################################################
 
 plt.figure()
-plt.plot(N_arr, erg_list, 'd-', color='c')
+plt.plot(N_arr, erg_list, 'o-', color='c')
 plt.xlabel(r"$N$")
 plt.ylabel(r"$\mathcal{E}_b$")
 plt.title("Battery ergotropy at optimal charging time")
@@ -227,70 +243,29 @@ plt.show()
 ###########################################################################
 
 plt.figure()
-plt.plot(N_arr, var_list, 'd-', color='g')
+plt.plot(N_arr, var_list, 'd-', color='b')
 plt.xlabel(r"$N$")
 plt.ylabel(r"$\mathrm{Var}(\mathcal{E}_b)$")
 plt.title("Variance of battery ergotropy at optimal charging time")
 plt.show()
 
-##########################################################
-# Plot ergotropy fraction as function of g for different N 
-##########################################################
-
-erg_list = []
-Eb_list  = []
-
-for i, N in enumerate(N_arr):
-
-    H, HB = tavis_cummings(N, nmax, ω, ω0, g)
-    HB_full = qt.tensor(qt.qeye(nmax), HB)
-
-    psi0 = initial_state(N, nmax, "coherent")
-
-    # evolve until optimal τ
-    result = qt.sesolve(H, psi0, [0, τ_list[i]])
-    rho = result.states[-1]
-
-    # reduced battery state
-    rho_b = rho.ptrace(1)
-
-    # battery energy
-    Eb = qt.expect(HB, rho_b)
-    
-    # ergotropy (via pnm matrix)
-    erg = ergotropy_pnm(pnm, r_val, e_val)
-
-    Eb_list.append(Eb)
-    erg_list.append(erg)
-
-Eb_arr  = np.array(Eb_list)
-erg_arr = np.array(erg_list)
-
-ratio = erg_arr / (Eb_arr + 1e-20)   # avoid division by zero
-
-for idx, N in enumerate(N_arr):
-    print(f"N={N:2d}, τ={τ_list[idx]:.3f}, Erg / <EB>={ratio[idx]:.6f}")
+#############################################################
+# Plot ergotropy fraction as a function of g for different N 
+#############################################################
 
 plt.figure()
-plt.plot(N_arr, ratio, 'o-', color='g', linewidth=2)
+plt.plot(N_arr, ratio_list, 'o-', color='g', linewidth=2)
 plt.xlabel(r"$N$")
 plt.ylabel(r"$\mathcal{E}_b / \langle E_b \rangle$")
 plt.title("Ergotropy fraction at optimal charging time")
 plt.show()
 
-erg_arr = np.array(erg_list)
-var_arr = np.array(var_list)
-
-#####################################################################
-# Plot fluctuations w.r.t ergotropy as function of g for different N 
-#####################################################################
-
-rel_fluct = np.sqrt(var_arr) / erg_arr
-
-rel_fluc = np.sqrt(var_arr) / Eb_arr
-
 for idx, N in enumerate(N_arr):
-    print(f"N={N:2d}, τ={τ_list[idx]:.3f}, Relative Fluctuation ={rel_fluct[idx]:.6f}, Relative Fluctuation with Eb ={rel_fluc[idx]:.6f}")
+    print(f"N={N:2d}, τ={τ_list[idx]:.3f}, Relative Fluctuation ={rel_fluct[idx]:.12f}, Relative Fluctuation with Eb ={rel_fluc[idx]:.12f}")
+
+#######################################################################
+# Plot fluctuations w.r.t ergotropy as a function of g for different N 
+#######################################################################
 
 plt.figure()
 plt.plot(N_arr, rel_fluct, 's-', color='r')
@@ -299,12 +274,12 @@ plt.ylabel(r"$\sqrt{\mathrm{Var}(\mathcal{E}_b)}/\mathcal{E}_b$")
 plt.title(r"Relative ergotropy fluctuations with $\mathcal{E}_b$")
 plt.show()
 
-##########################################################################
-# Plot fluctuations w.r.t battery energy as function of g for different N 
-##########################################################################
+############################################################################
+# Plot fluctuations w.r.t battery energy as a function of g for different N 
+############################################################################
 
 plt.figure()
-plt.plot(N_arr, rel_fluc, 's-', color='c')
+plt.plot(N_arr, rel_fluc, 's-', color='b')
 plt.xlabel(r"$N$")
 plt.ylabel(r"$\sqrt{\mathrm{Var}(\mathcal{E}_b)}/ \langle E_b \rangle$")
 plt.title(r"Relative ergotropy fluctuations w.r.t $\langle E_b \rangle$")
